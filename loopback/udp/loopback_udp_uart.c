@@ -196,7 +196,7 @@ int main() {
     irq_set_exclusive_handler(UART1_IRQ, on_uart_rx);
     irq_set_enabled(UART1_IRQ, true);
 
-    printf("=== W55RP20-S2E Loopback Server Demo (UART mode) ===\n");
+    printf("=== W55RP20-S2E Loopback UDP Demo (UART mode) ===\n");
 
     printf("\n--- Config W55RP20 with AT command(UART) ---\n");
     {
@@ -204,12 +204,14 @@ int main() {
         factory_reset();                        // Send Factory Reset command
         // If you send Reset or Factory Reset command, W55RP20 will reboot and enter to default gateway mode
         enter_command_mode();                   // Send +++ command 
-        at_set("OP", "1");                      // Set W55RP20 TCP server mode
+        at_set("OP", "3");                      // Set W55RP20 UDP mode
         at_set("LI", "192.168.11.2");           // Set W55RP20's Local IP : 192.168.11.2
         at_set("SM", "255.255.255.0");          // Set W55RP20's Subnet mask : 255.255.255.0
         at_set("GW", "192.168.11.1");           // Set W55RP20's Gateway : 192.168.11.1
         at_set("DS", "8.8.8.8");                // Set W55RP20's DNS Address : 8.8.8.8
-        at_set("LP", "5000");                   // Set W55RP20's Local Port : 5000
+        at_set("LP", "4002");                   // Set W55RP20's Local Port : 4002
+        at_set("RH", "192.168.11.100");         // Set Remote IP(ex. PC) : 192.168.11.100
+        at_set("RP", "4001");                   // Set Remote Port(ex. PC) : 4001
         at_set("SV", NULL);                     // Send Save command
         sleep_ms(100);
         device_reset();                         // Send Reset command

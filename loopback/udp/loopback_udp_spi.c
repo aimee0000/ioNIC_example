@@ -283,21 +283,23 @@ int main() {
         &gpio_callback
     );
 
-    printf("=== W55RP20-S2E Loopback Server Demo (SPI mode) ===\n");
+    printf("=== W55RP20-S2E Loopback UDP Demo (SPI mode) ===\n");
 
     printf("\n--- Config W55RP20 with AT command(SPI) ---\n");
     {
-        at_set("FR", NULL);                             // Send Factory Reset command
+        at_set("FR", NULL);                     // Send Factory Reset command
         printf("W55RP20 is Rebooting...\n"); 
         sleep_ms(3000); 
-        at_set("OP", "1");                              // Set W55RP20 TCP server mode
-        at_set("LI", "192.168.11.2");                   // Set W55RP20's Local IP : 192.168.11.2
-        at_set("SM", "255.255.255.0");                  // Set W55RP20's Subnet mask : 255.255.255.0
-        at_set("GW", "192.168.11.1");                   // Set W55RP20's Gateway : 192.168.11.1
-        at_set("DS", "8.8.8.8");                        // Set W55RP20's DNS Address : 8.8.8.8
-        at_set("LP", "5000");                           // Set W55RP20's Local Port : 5000
-        at_set("SV", NULL);                             // Send Save command
-        at_set("RT", NULL);                             // Send Reset command
+        at_set("OP", "3");                      // Set W55RP20 UDP mode
+        at_set("LI", "192.168.11.2");           // Set W55RP20's Local IP : 192.168.11.2
+        at_set("SM", "255.255.255.0");          // Set W55RP20's Subnet mask : 255.255.255.0
+        at_set("GW", "192.168.11.1");           // Set W55RP20's Gateway : 192.168.11.1
+        at_set("DS", "8.8.8.8");                // Set W55RP20's DNS Address : 8.8.8.8
+        at_set("LP", "4002");                   // Set W55RP20's Local Port : 4002
+        at_set("RH", "192.168.11.100");         // Set Remote IP(ex. PC) : 192.168.11.100
+        at_set("RP", "4001");                   // Set Remote Port(ex. PC) : 4001
+        at_set("SV", NULL);                     // Send Save command
+        at_set("RT", NULL);                     // Send Reset command
         printf("W55RP20 is Rebooting...\n"); 
         sleep_ms(3000); 
     }
