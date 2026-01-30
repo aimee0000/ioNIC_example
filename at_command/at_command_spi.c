@@ -270,28 +270,60 @@ static int at_get(const char *at_cmd, char *out)
 // AT command helpers
 static void printHelp(void)
 {
-    printf("<<< W55RP20-S2E AT Help (SPI) >>>\r\n");
-    printf("SPI AT command does NOT require '+++'. Just type commands.\r\n");
-    printf("Save settings: SV  | Reboot: RT  | Factory reset: FR\r\n");
-    printf("\r\n");
-    printf("[Device Info] (RO)\r\n");
-    printf("MC  -> MAC address (ex: MC00:08:DC:00:00:01)\r\n");
-    printf("VR  -> Firmware version (ex: VR1.0.0)\r\n");
-    printf("MN  -> Product name (ex: MNWIZ5XXRSR-RP)\r\n");
-    printf("ST  -> Status (BOOT/OPEN/CONNECT/UPGRADE/ATMODE)\r\n");
-    printf("\r\n");
-    printf("[Network] (RW)\r\n");
-    printf("OPx -> Mode: 0 TCP client, 1 TCP server, 2 mixed, 3 UDP, 4 SSL, 5 MQTT, 6 MQTTS\r\n");
-    printf("IMx -> IP alloc: 0 static, 1 DHCP\r\n");
-    printf("LIa.b.c.d -> Local IP (ex: LI192.168.11.2)\r\n");
-    printf("SMa.b.c.d -> Subnet (ex: SM255.255.255.0)\r\n");
-    printf("GWa.b.c.d -> Gateway (ex: GW192.168.11.1)\r\n");
-    printf("DSa.b.c.d -> DNS (ex: DS8.8.8.8)\r\n");
-    printf("LPn -> Local port (ex: LP5000)\r\n");
-    printf("RHa.b.c.d / domain -> Remote host (ex: RH192.168.11.3)\r\n");
-    printf("RPn -> Remote port (ex: RP5000)\r\n");
-    printf("\r\n");
-    printf("Type HELP or ? to show this list again.\r\n");
+  printf("<<< W55RP20-S2E AT Help >>>\r\n");
+  printf("Enter command mode: +++ (guard time >= 500ms before/after)\r\n");
+  printf("Exit command mode: EX\r\n");
+  printf("Save settings: SV  | Reboot: RT  | Factory reset: FR\r\n");
+  printf("\r\n");
+  printf("[Device Info] (RO)\r\n");
+  printf("MC  -> MAC address (ex: MC00:08:DC:00:00:01)\r\n");
+  printf("VR  -> Firmware version (ex: VR1.0.0)\r\n");
+  printf("MN  -> Product name (ex: MNWIZ5XXRSR-RP)\r\n");
+  printf("ST  -> Status (BOOT/OPEN/CONNECT/UPGRADE/ATMODE)\r\n");
+  printf("UN  -> UART interface str (ex: UNRS-232/TTL)\r\n");
+  printf("UI  -> UART interface code (ex: UI0)\r\n");
+  printf("\r\n");
+  printf("[Network] (RW)\r\n");
+  printf("OPx -> Mode: 0 TCP client, 1 TCP server, 2 mixed, 3 UDP, 4 SSL, 5 MQTT, 6 MQTTS\r\n");
+  printf("IMx -> IP alloc: 0 static, 1 DHCP\r\n");
+  printf("LIa.b.c.d -> Local IP (ex: LI192.168.11.2)\r\n");
+  printf("SMa.b.c.d -> Subnet (ex: SM255.255.255.0)\r\n");
+  printf("GWa.b.c.d -> Gateway (ex: GW192.168.11.1)\r\n");
+  printf("DSa.b.c.d -> DNS (ex: DS8.8.8.8)\r\n");
+  printf("LPn -> Local port (ex: LP5000)\r\n");
+  printf("RHa.b.c.d / domain -> Remote host (ex: RH192.168.11.3)\r\n");
+  printf("RPn -> Remote port (ex: RP5000)\r\n");
+  printf("\r\n");
+  printf("[UART] (RW)\r\n");
+  printf("BRx -> Baud (12=115200, 13=230400)\r\n");
+  printf("DBx -> Data bits (0=7bit, 1=8bit)\r\n");
+  printf("PRx -> Parity (0=None, 1=Odd, 2=Even)\r\n");
+  printf("SBx -> Stop bits (0=1bit, 1=2bit)\r\n");
+  printf("FLx -> Flow (0=None, 1=XON/XOFF, 2=RTS/CTS)\r\n");
+  printf("ECx -> Echo (0=Off, 1=On)\r\n");
+  printf("\r\n");
+  printf("[Packing] (RW)\r\n");
+  printf("PTn -> Time delimiter ms (ex: PT1000)\r\n");
+  printf("PSn -> Size delimiter bytes (ex: PS64)\r\n");
+  printf("PDxx -> Char delimiter hex (ex: PD0D)\r\n");
+  printf("\r\n");
+  printf("[Options] (RW)\r\n");
+  printf("ITn -> Inactivity sec (ex: IT30)\r\n");
+  printf("RIn -> Reconnect interval ms (ex: RI3000)\r\n");
+  printf("CPx -> Conn password enable (0/1)\r\n");
+  printf("NPxxxx -> Conn password (max 8 chars)\r\n");
+  printf("SPxxxx -> Search ID (max 8 chars)\r\n");
+  printf("DGx -> Debug msg (0/1)\r\n");
+  printf("KAx -> Keep-alive (0/1)\r\n");
+  printf("KIn -> KA initial interval ms (ex: KI7000)\r\n");
+  printf("KEn -> KA retry interval ms (ex: KE5000)\r\n");
+  printf("SOn -> SSL recv timeout ms (ex: SO2000)\r\n");
+  printf("\r\n");
+  printf("[MQTT] (RW)\r\n");
+  printf("QUuser QPpass QCid QK60 PUtopic\r\n");
+  printf("U0sub U1sub U2sub QO0\r\n");
+  printf("\r\n");
+  printf("Type HELP or ? to show this list again.\r\n");
 }
 
 static bool is_exec_wo_cmd(const char code[3])
@@ -431,14 +463,12 @@ int main(void)
 
     printf("=== W55RP20-S2E AT Command Console (SPI mode) ===\r\n");
     sleep_ms(500);
-    printf("Type HELP or ? for command guide.\r\n");
 
     while (1)
     {
         printf("\r\n---------------------------------------------------------------------------\r\n");
         printf("   Ready.\r\n");
         printf("   In command mode, type W55RP20 commands (e.g., VR, MN, MC, LI).\r\n");
-        printf("   Type 'EX' then Enter to exit command mode.\r\n");
         printf("   Type 'HELP' or '?' for command guide.\r\n");
         printf("---------------------------------------------------------------------------\r\n");
 
