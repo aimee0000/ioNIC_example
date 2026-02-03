@@ -54,12 +54,12 @@ static int spi_wait_tx_ack_frame(void)
 
     while (absolute_time_diff_us(start_time, get_absolute_time()) < timeout_us)
     {
-        spi_write_read_blocking(SPI_PORT, &tx, &rx, 1);
+        spi_read_blocking(SPI_PORT, tx, &rx, 1);
 
         if (rx == RESP_ACK)
         {
             for (int k = 0; k < 3; k++) {
-                spi_write_read_blocking(SPI_PORT, &tx, &rx, 1);
+                spi_read_blocking(SPI_PORT, tx, &rx, 1);
             }
             return 0;
         }
@@ -81,15 +81,15 @@ static int spi_wait_rx_ack_frame(uint16_t *out_len)
 
     while (absolute_time_diff_us(start_time, get_absolute_time()) < timeout_us)
     {
-        spi_write_read_blocking(SPI_PORT, &tx, &rx, 1);
+        spi_read_blocking(SPI_PORT, tx, &rx, 1);
 
         if (rx == RESP_READ_HDR)
         {
             uint8_t len_l = 0, len_h = 0, end_ff = 0;
 
-            spi_write_read_blocking(SPI_PORT, &tx, &len_l, 1);
-            spi_write_read_blocking(SPI_PORT, &tx, &len_h, 1);
-            spi_write_read_blocking(SPI_PORT, &tx, &end_ff, 1);
+            spi_read_blocking(SPI_PORT, tx, &len_l, 1);
+            spi_read_blocking(SPI_PORT, tx, &len_h, 1);
+            spi_read_blocking(SPI_PORT, tx, &end_ff, 1);
 
             if (out_len) {
                 *out_len = (uint16_t)len_l | ((uint16_t)len_h << 8);
@@ -160,7 +160,7 @@ static int spi_read(uint8_t *out, uint16_t out_max)
 
     // Step 3: data read
     uint8_t tx = DUMMY;
-    spi_write_read_blocking(SPI_PORT, &tx, &out[0], len);
+    spi_read_blocking(SPI_PORT, tx, &out[0], len);
 
     return (int)len;
 }
@@ -260,7 +260,7 @@ static int at_get(const char *at_cmd, char *out)
 
     // Step 4: data read
     uint8_t tx = DUMMY;
-    spi_write_read_blocking(SPI_PORT, &tx, (uint8_t *)&out[0], len);
+    spi_read_blocking(SPI_PORT, tx, (uint8_t *)&out[0], len);
     out[len] = '\0';
 
     printf("AT Get > %s\r\n", out);

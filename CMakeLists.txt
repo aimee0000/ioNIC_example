@@ -49,6 +49,7 @@ endfunction()
 
 add_subdirectory(at_command)
 add_subdirectory(loopback)
+add_subdirectory(http)
 
 # Add blink example
 # add_subdirectory_exclude_platforms(blink)

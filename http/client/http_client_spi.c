@@ -9,12 +9,12 @@
 
 // ================== SPI Configuration ==================
 #define SPI_PORT        spi0
-#define SPI_BAUD_HZ     (10 * 1000 * 1000)   
+#define SPI_BAUD_HZ     (10 * 1000 * 1000)
 #define SPI_TX_PIN      3
 #define SPI_RX_PIN      4
 #define SPI_CLK_PIN     2
 #define SPI_CS_PIN      5
-#define SPI_INT_PIN      26
+#define SPI_INT_PIN     26
 
 // ================== W55RP20-S2E SPI Protocol ==================
 #define CMD_DATA_WRITE   0xA0
@@ -24,14 +24,17 @@
 #define RESP_NACK        0x0B
 #define DUMMY            0xFF
 
-#define TIMEOUT_MS      2000
-#define MAX_PAYLOAD      2048   // doc notes >2048 may NACK :contentReference[oaicite:7]{index=7}
+#define TIMEOUT_MS      5000
+#define MAX_PAYLOAD     2048   // doc notes >2048 may NACK :contentReference[oaicite:7]{index=7}
 #define BUF_SIZE        2048
 
-#define ERR_NACK -1
-#define ERR_TIMEOUT -2
+#define ERR_NACK        -1
+#define ERR_TIMEOUT     -2
 
 static volatile bool spi_rx_pending = false;
+
+char http_tx_buf[BUF_SIZE] = {0,};
+char http_rx_buf[BUF_SIZE] = {0,};
 
 void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == SPI_INT_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
@@ -42,14 +45,13 @@ void gpio_callback(uint gpio, uint32_t events) {
 static int spi_wait_tx_ack_frame(void)
 {
     uint8_t tx = DUMMY, rx = 0;
-
     absolute_time_t start_time = get_absolute_time();
-    const int timeout_us = TIMEOUT_MS * 1000;   
+    const int timeout_us = TIMEOUT_MS * 1000;
 
     while (absolute_time_diff_us(start_time, get_absolute_time()) < timeout_us)
     {
         spi_read_blocking(SPI_PORT, tx, &rx, 1);
-        
+
         if (rx == RESP_ACK)
         {
             for (int k = 0; k < 3; k++) {
@@ -58,8 +60,7 @@ static int spi_wait_tx_ack_frame(void)
             return 0;
         }
 
-        if (rx == RESP_NACK)    return ERR_NACK;
-
+        if (rx == RESP_NACK) return ERR_NACK;
         tight_loop_contents();
     }
 
@@ -69,9 +70,8 @@ static int spi_wait_tx_ack_frame(void)
 static int spi_wait_rx_ack_frame(uint16_t *out_len)
 {
     uint8_t tx = DUMMY, rx = 0;
-
     absolute_time_t start_time = get_absolute_time();
-    const int timeout_us = TIMEOUT_MS * 1000;   
+    const int timeout_us = TIMEOUT_MS * 1000;
 
     while (absolute_time_diff_us(start_time, get_absolute_time()) < timeout_us)
     {
@@ -114,7 +114,7 @@ bool spi_write(const uint8_t *data, uint16_t len) {
 
     // Step 2: wait ACK frame
     if((ret = spi_wait_tx_ack_frame()) < 0) {
-        printf("Error - spi_write: %d\n", ret);
+        printf("Error - spi_write command: %d\n", ret);
         return false;
     }
 
@@ -123,7 +123,7 @@ bool spi_write(const uint8_t *data, uint16_t len) {
 
     // Step 4: wait ACK frame
     if((ret = spi_wait_tx_ack_frame()) < 0) {
-        printf("Error - spi_write: %d\n", ret);
+        printf("Error - spi_write data: %d\n", ret);
         return false;
     }
 
@@ -202,64 +202,63 @@ static bool at_set(const char *at_cmd, const char *val) {
     return true;
 }
 
-static int at_get(const char *at_cmd, char *out) {
-    int ret = 0;
-    if (!at_cmd || !out) return false;
+// ------------------ HTTP helper ------------------
+static bool http_get_send(const char *host, const char *path)
+{
+    //char req[512];
 
-    uint8_t hdr[4] = {
-        (uint8_t)at_cmd[0],
-        (uint8_t)at_cmd[1],
-        (uint8_t)0x0D,      // '\r'
-        (uint8_t)0x0A       // '\n'
-    };
+    if (!host || !path) return false;
 
-    // Step 1: send read command
-    spi_write_blocking(SPI_PORT, hdr, 4);
+    int len = snprintf(http_tx_buf, sizeof(http_tx_buf),
+        "GET %s HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "User-Agent: W55RP20\r\n"
+        "Accept: */*\r\n"
+        "Connection: close\r\n"
+        "\r\n",
+        path, host);
 
-    // Step 2 : Check INT Status
-    absolute_time_t start_time = get_absolute_time();
-    const int timeout_us = TIMEOUT_MS * 1000;   
+    if (len <= 0 || len >= (int)sizeof(http_tx_buf)) {
+        printf("HTTP request too long\n");
+        return false;
+    }
 
-    while (absolute_time_diff_us(start_time, get_absolute_time()) < timeout_us)
-    {
-        if (spi_rx_pending) 
-        {
-            ret = 0;
+    printf("\n[HTTP TX]\n%s\n", http_tx_buf);
+    sleep_ms(100);
+
+    return spi_write((const uint8_t*)http_tx_buf, (uint16_t)len);
+}
+
+static void http_rx_print_loop(uint32_t idle_timeout_ms)
+{
+    int len = 0;
+    absolute_time_t last_rx = get_absolute_time();
+
+    while (true) {
+        if (spi_rx_pending) {
             spi_rx_pending = false;
+
+            //uint8_t buf[BUF_SIZE + 1];
+            len = spi_read(http_rx_buf, BUF_SIZE-1);
+            if (len > 0) {
+                http_rx_buf[len] = '\0';
+                printf("%s", http_rx_buf);
+                last_rx = get_absolute_time();
+            }
+        }
+        if (absolute_time_diff_us(last_rx, get_absolute_time()) >
+            (int64_t)idle_timeout_ms * 1000) {
+            if(!len)
+                printf("\n\n[HTTP RX END] (idle timeout)\n");
             break;
         }
+
         tight_loop_contents();
     }
-    if(ret < 0) 
-    {
-        printf("Error - spi_read: %d\n", ERR_TIMEOUT);
-        return ERR_TIMEOUT;
-    }
-
-    // Step 3: wait B1 header frame and get len
-    uint16_t len = 0;
-    if((ret = spi_wait_rx_ack_frame(&len)) < 0) {
-        printf("Error - spi_read: %d\n", ret);
-        return ret;
-    }
-
-    if (len == 0) {
-        out[0] = '\0';
-        return 0;
-    }
-
-    // Step 4: data read 
-    uint8_t tx = DUMMY;
-    spi_read_blocking(SPI_PORT, tx, &out[0], len);
-    out[len]='\0';
-    
-    printf("AT Get> %s\r\n", out);
-
-    return (int)len;
 }
 
 int main() {
-    char buf[BUF_SIZE];
+    int ret = 0;
 
     stdio_init_all();
     sleep_ms(3000);
@@ -272,6 +271,7 @@ int main() {
     gpio_set_function(SPI_CS_PIN, GPIO_FUNC_SPI);
     bi_decl(bi_4pins_with_func(SPI_RX_PIN, SPI_TX_PIN, SPI_CLK_PIN, SPI_CS_PIN, GPIO_FUNC_SPI));
 
+    // INT pin
     gpio_init(SPI_INT_PIN);
     gpio_set_dir(SPI_INT_PIN, GPIO_IN);
     gpio_pull_up(SPI_INT_PIN);
@@ -283,44 +283,45 @@ int main() {
         &gpio_callback
     );
 
-    printf("=== W55RP20-S2E Loopback UDP Demo (SPI mode) ===\n");
+    printf("=== W55RP20-S2E HTTP Client Demo (SPI mode) ===\n");
 
     printf("\n--- Config W55RP20 with AT command(SPI) ---\n");
     {
         at_set("FR", NULL);                     // Send Factory Reset command
         printf("W55RP20 is Rebooting...\n"); 
         sleep_ms(3000); 
-        at_set("OP", "3");                      // Set W55RP20 UDP mode
+        at_set("OP", "0");                      // Set W55RP20 TCP client mode
         at_set("LI", "192.168.11.2");           // Set W55RP20's Local IP : 192.168.11.2
         at_set("SM", "255.255.255.0");          // Set W55RP20's Subnet mask : 255.255.255.0
         at_set("GW", "192.168.11.1");           // Set W55RP20's Gateway : 192.168.11.1
         at_set("DS", "8.8.8.8");                // Set W55RP20's DNS Address : 8.8.8.8
-        at_set("LP", "4002");                   // Set W55RP20's Local Port : 4002
+        at_set("LP", "5000");                   // Set W55RP20's Local Port : 5000
         at_set("RH", "192.168.11.100");         // Set Remote IP(ex. PC) : 192.168.11.100
-        at_set("RP", "4001");                   // Set Remote Port(ex. PC) : 4001
+        at_set("RP", "8080");                   // Set Remote Port(HTTP) : 8080 
         at_set("SV", NULL);                     // Send Save command
         at_set("RT", NULL);                     // Send Reset command
         printf("W55RP20 is Rebooting...\n"); 
         sleep_ms(3000); 
-        spi_rx_pending = false;     
+        spi_rx_pending = false;    
     }
 
-    printf("\n--- Loopback Data(SPI) ---\n");
-    {
-        while (true) {
-            if (spi_rx_pending) {
-                
-                int len = spi_read(buf, sizeof(buf));
+    sleep_ms(3000); 
 
-                if (len > 0) {
-                    // loopback
-                    bool ok = spi_write(buf, (uint16_t)len);
-                    if(ok == false)
-                        printf("TX(%d): FAIL", len);
-                }
-                spi_rx_pending = false;
-            }
-            tight_loop_contents();
+    printf("\n--- Send HTTP request ---\n");
+    {
+        const char *host = "192.168.11.100";
+        const char *path = "/index.html";
+
+        if (!http_get_send(host, path)) {
+            printf("HTTP send failed\n");
+        } 
+        else {
+            printf("\n[HTTP RX]\n");
+            http_rx_print_loop(5000); 
         }
     }
+
+    printf("=== W55RP20-S2E HTTP Client Demo (SPI mode) ===\n");
+
+    while (true) tight_loop_contents();
 }
