@@ -25,6 +25,10 @@ static uint8_t rx_ring[RX_RING_SIZE];
 static char uart_tx_buf[UART_BUF_SIZE] = {};
 static char uart_rx_buf[UART_BUF_SIZE] = {};
 
+// ======= Server Information =======
+const char* SERVER_IP   = "192.168.11.100";  // PC(Server) IP
+const char* SERVER_PORT = "5000";            // PC(Server) Port 
+
 typedef enum _MODE{
     MODE_NONE,
     MODE_AT,
@@ -210,8 +214,8 @@ int main() {
         at_set("GW", "192.168.11.1");           // Set W55RP20's Gateway : 192.168.11.1
         at_set("DS", "8.8.8.8");                // Set W55RP20's DNS Address : 8.8.8.8
         at_set("LP", "5000");                   // Set W55RP20's Local Port : 5000
-        at_set("RH", "192.168.11.100");         // Set Remote IP(ex. PC) : 192.168.11.100
-        at_set("RP", "5000");                   // Set Remote Port(ex. PC) : 5000
+        at_set("RH", SERVER_IP);                // Set Remote IP(ex. PC) : 192.168.11.100
+        at_set("RP", SERVER_PORT);              // Set Remote Port(ex. PC) : 5000
         at_set("SV", NULL);                     // Send Save command
         sleep_ms(100);
         device_reset();                         // Send Reset command

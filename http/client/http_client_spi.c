@@ -36,6 +36,10 @@ static volatile bool spi_rx_pending = false;
 char http_tx_buf[BUF_SIZE] = {0,};
 char http_rx_buf[BUF_SIZE] = {0,};
 
+// ======= Server Information =======
+const char* SERVER_IP   = "192.168.11.100";  // PC(Server) IP
+const char* SERVER_PORT = "8080";            // PC(Server) Port 
+
 void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == SPI_INT_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
         spi_rx_pending = true;
@@ -296,8 +300,8 @@ int main() {
         at_set("GW", "192.168.11.1");           // Set W55RP20's Gateway : 192.168.11.1
         at_set("DS", "8.8.8.8");                // Set W55RP20's DNS Address : 8.8.8.8
         at_set("LP", "5000");                   // Set W55RP20's Local Port : 5000
-        at_set("RH", "192.168.11.100");         // Set Remote IP(ex. PC) : 192.168.11.100
-        at_set("RP", "8080");                   // Set Remote Port(HTTP) : 8080 
+        at_set("RH", SERVER_IP);                // Set Remote IP(ex. PC) : 192.168.11.100
+        at_set("RP", SERVER_PORT);              // Set Remote Port(HTTP) : 8080 
         at_set("SV", NULL);                     // Send Save command
         at_set("RT", NULL);                     // Send Reset command
         printf("W55RP20 is Rebooting...\n"); 
@@ -309,10 +313,9 @@ int main() {
 
     printf("\n--- Send HTTP request ---\n");
     {
-        const char *host = "192.168.11.100";
         const char *path = "/index.html";
 
-        if (!http_get_send(host, path)) {
+        if (!http_get_send(SERVER_IP, path)) {
             printf("HTTP send failed\n");
         } 
         else {
