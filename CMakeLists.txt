@@ -50,13 +50,9 @@ endfunction()
 add_subdirectory(at_command)
 add_subdirectory(loopback)
 add_subdirectory(http)
-
-# Add blink example
-# add_subdirectory_exclude_platforms(blink)
-# add_subdirectory_exclude_platforms(blink_simple)
-
-# Add hello world example
-# add_subdirectory_exclude_platforms(hello_world)
+add_subdirectory(ssl)
+add_subdirectory(mqtt)
+add_subdirectory(aws_mqtts)
 
 add_compile_options(-Wall
         -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
@@ -65,8 +61,4 @@ add_compile_options(-Wall
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
     add_compile_options(-Wno-maybe-uninitialized)
 endif()
-
-# Hardware-specific examples in subdirectories:
-#add_subdirectory(spi)
-# add_subdirectory(uart)
 
